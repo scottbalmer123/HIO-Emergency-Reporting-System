@@ -111,6 +111,7 @@ img {
   border-bottom: 10px solid #000000;
   box-shadow: var(--shadow);
   border-radius: 10px;
+  bottom-border-radius: 10px;
 }
 
 .brand-lockup {
