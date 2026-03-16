@@ -1,0 +1,1165 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Hancock Iron Ore Incident Control</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="backdrop backdrop-left"></div>
+    <div class="backdrop backdrop-right"></div>
+
+    <header class="app-header">
+      <div class="brand-block">
+        <div class="brand-lockup">
+          <img
+            class="brand-logo"
+            src="logo-hancock-iron-ore.svg"
+            alt="Hancock Iron Ore"
+          />
+        </div>
+        <div class="brand-copy">
+          <p class="eyebrow">Emergency Management Platform</p>
+          <h1>Incident Control Console</h1>
+          <p class="hero-text">
+            Move between incident creation, the incident register, and the worker
+            roster without losing operational context.
+          </p>
+          <p class="sync-indicator" id="storage-mode-indicator">
+            Local browser storage active
+          </p>
+        </div>
+      </div>
+
+      <nav class="app-nav" aria-label="Primary navigation">
+        <button class="nav-chip is-active" data-view-target="create" type="button">
+          New Incident
+        </button>
+        <button class="nav-chip" data-view-target="incidents" type="button">
+          Incident Register
+        </button>
+        <button class="nav-chip" data-view-target="reporting" type="button">
+          Reporting
+        </button>
+        <button class="nav-chip" data-view-target="personnel" type="button">
+          Personnel
+        </button>
+        <button class="nav-chip" data-view-target="settings" type="button">
+          Settings
+        </button>
+      </nav>
+    </header>
+
+    <section class="summary-strip" aria-label="Operational snapshot">
+      <article class="metric-card">
+        <span class="metric-label">Open incidents</span>
+        <strong class="metric-value" id="metric-open">0</strong>
+      </article>
+      <article class="metric-card">
+        <span class="metric-label">High severity</span>
+        <strong class="metric-value" id="metric-high">0</strong>
+      </article>
+      <article class="metric-card">
+        <span class="metric-label">Medical cases</span>
+        <strong class="metric-value" id="metric-medical">0</strong>
+      </article>
+      <article class="metric-card">
+        <span class="metric-label">Notifications pending</span>
+        <strong class="metric-value" id="metric-pending">0</strong>
+      </article>
+      <article class="metric-card">
+        <span class="metric-label">Workers on roster</span>
+        <strong class="metric-value" id="metric-personnel">0</strong>
+      </article>
+    </section>
+
+    <main class="page-shell">
+      <section class="view is-active" data-view="create">
+        <div class="view-intro">
+          <div>
+            <p class="panel-kicker">Create and assign</p>
+            <h2>Build a new incident form</h2>
+            <p>
+              Complete the command log, attach workers from the personnel roster,
+              and capture radio traffic before saving the incident to the register.
+            </p>
+          </div>
+          <div class="view-actions">
+            <button class="btn btn-primary" id="start-new-incident-btn" type="button">
+              Blank Form
+            </button>
+            <button class="btn btn-secondary" id="open-register-btn" type="button">
+              Open Register
+            </button>
+          </div>
+        </div>
+
+        <div class="view-grid create-grid">
+          <form id="incident-form" class="panel incident-form">
+            <div class="form-topline">
+              <div>
+                <p class="panel-kicker">Incident Workspace</p>
+                <h2 id="workspace-title">Create Incident</h2>
+              </div>
+              <div class="form-actions">
+                <button class="btn btn-ghost" id="reset-form-btn" type="button">
+                  Reset Form
+                </button>
+                <button class="btn btn-primary" type="submit">Save Incident</button>
+              </div>
+            </div>
+            <p class="helper-text" id="incident-form-status">
+              Build a new incident record or load one from the register to edit it.
+            </p>
+
+            <section class="form-section">
+              <div class="section-header">
+                <h3>Initial Notification Details</h3>
+                <p>Capture the fields that appear in the HIO activation report.</p>
+              </div>
+              <div class="field-grid field-grid-4">
+                <label>
+                  Incident ID
+                  <input name="incidentId" required />
+                </label>
+                <label>
+                  Incident status
+                  <select name="status">
+                    <option>Open</option>
+                    <option>Contained</option>
+                    <option>Closed</option>
+                    <option>Under Investigation</option>
+                  </select>
+                </label>
+                <label>
+                  Template location
+                  <select name="templateLocationType">
+                    <option>Mine</option>
+                    <option>Port</option>
+                    <option>Rail</option>
+                    <option>Other</option>
+                  </select>
+                </label>
+                <label>
+                  Exact location
+                  <input name="locationDetail" required />
+                </label>
+                <label>
+                  ESO team
+                  <input name="esoTeam" readonly placeholder="Auto-filled from assigned personnel" />
+                </label>
+                <label>
+                  ESO supervisor
+                  <select name="esoSupervisor">
+                    <option value="">Select supervisor</option>
+                  </select>
+                </label>
+                <label>
+                  Shift
+                  <select name="shift">
+                    <option>Day</option>
+                    <option>Night</option>
+                    <option>Maintenance</option>
+                  </select>
+                </label>
+                <label>
+                  Date and time notified
+                  <input name="reportedAt" type="datetime-local" required />
+                </label>
+                <label>
+                  Report compiled by
+                  <select name="reportCompiledBy">
+                    <option value="">Select report compiler</option>
+                  </select>
+                </label>
+                <label>
+                  Report compiled date
+                  <input name="reportCompiledDate" type="date" />
+                </label>
+                <label>
+                  Total no. of personnel
+                  <input name="personnelCount" type="number" min="0" value="0" />
+                </label>
+                <label>
+                  Incident category
+                  <select name="templateIncidentCategory">
+                    <option>Emergency Response</option>
+                    <option>Medical</option>
+                    <option>Security</option>
+                  </select>
+                </label>
+                <label>
+                  Detailed incident type
+                  <select name="incidentType">
+                    <option>Ground fall</option>
+                    <option>Fire Alarm</option>
+                    <option>Fire / smoke</option>
+                    <option>Vehicle collision</option>
+                    <option>Medical emergency</option>
+                    <option>Gas exposure</option>
+                    <option>Explosive incident</option>
+                    <option>Flooding / water ingress</option>
+                    <option>Electrical fault</option>
+                    <option>Other</option>
+                  </select>
+                </label>
+                <label>
+                  Severity
+                  <select name="severity">
+                    <option>Low</option>
+                    <option>Moderate</option>
+                    <option>High</option>
+                    <option>Critical</option>
+                  </select>
+                </label>
+                <label>
+                  Incident controller
+                  <input name="incidentController" />
+                </label>
+                <label>
+                  Lead responder
+                  <select name="leadResponder">
+                    <option value="">Select lead responder</option>
+                  </select>
+                </label>
+                <label>
+                  ESO primary role
+                  <input name="esoPrimaryRole" />
+                </label>
+                <label>
+                  Controlled / closed at
+                  <input name="controlledAt" type="datetime-local" />
+                </label>
+              </div>
+
+              <div class="field-grid field-grid-1">
+                <div class="picker-field">
+                  <div class="picker-head">
+                    <div>
+                      <span class="field-label">Assigned Personnel</span>
+                      <p class="helper-text">
+                        Select workers from the personnel roster and attach them
+                        to this incident.
+                      </p>
+                    </div>
+                    <div class="picker-actions">
+                      <button
+                        class="btn btn-ghost btn-small"
+                        id="personnel-picker-toggle"
+                        type="button"
+                        aria-expanded="false"
+                      >
+                        Select Workers
+                      </button>
+                      <button
+                        class="btn btn-ghost btn-small"
+                        id="manage-personnel-btn"
+                        type="button"
+                      >
+                        Manage Personnel
+                      </button>
+                    </div>
+                  </div>
+                  <div class="multiselect-panel hidden" id="personnel-picker-panel">
+                    <div class="multiselect-options" id="personnel-picker-options"></div>
+                  </div>
+                  <div class="chip-list" id="assigned-personnel-chips"></div>
+                </div>
+              </div>
+            </section>
+
+            <section class="form-section">
+              <div class="section-header">
+                <h3>Activation Method and Escalation</h3>
+                <p>Record how the incident was activated and key notification times.</p>
+              </div>
+              <div class="check-grid">
+                <label class="check-card">
+                  <input name="activationMethodRadio" type="checkbox" />
+                  Radio
+                </label>
+                <label class="check-card">
+                  <input name="activationMethodSmartGraphics" type="checkbox" />
+                  Smart graphics
+                </label>
+                <label class="check-card">
+                  <input name="activationMethodInPerson" type="checkbox" />
+                  In person
+                </label>
+                <label class="check-card">
+                  <input name="activationMethodPhone" type="checkbox" />
+                  Phone
+                </label>
+              </div>
+              <div class="field-grid field-grid-4">
+                <label>
+                  ESO superintendent notified
+                  <input name="timeEsoSuperintendentNotified" type="time" />
+                </label>
+                <label>
+                  SSE / ALT SSE notified
+                  <input name="timeSseAltNotified" type="time" />
+                </label>
+                <label>
+                  Whispir / other notified
+                  <input name="timeWhispirOtherNotified" type="time" />
+                </label>
+                <label>
+                  Time of arrival at site
+                  <input name="arrivalAtSiteTime" type="time" />
+                </label>
+                <label>
+                  Time of departure
+                  <input name="departureTime" type="time" />
+                </label>
+                <label>
+                  Casualties
+                  <input name="casualtyCount" type="number" min="0" value="0" />
+                </label>
+                <label>
+                  Evacuated personnel
+                  <input name="evacuatedCount" type="number" min="0" value="0" />
+                </label>
+                <label>
+                  Operations downtime (hrs)
+                  <input name="downtimeHours" type="number" min="0" step="0.5" value="0" />
+                </label>
+              </div>
+              <div class="field-grid field-grid-4">
+                <label class="toggle-field">
+                  <input name="medicalResponseRequired" type="checkbox" />
+                  Medical response required
+                </label>
+                <label class="toggle-field">
+                  <input name="regulatorNotified" type="checkbox" />
+                  Regulator notified
+                </label>
+                <label class="toggle-field">
+                  <input name="ventilationAffected" type="checkbox" />
+                  Ventilation affected
+                </label>
+                <label class="toggle-field">
+                  <input name="reentryRestricted" type="checkbox" />
+                  Re-entry restricted
+                </label>
+              </div>
+            </section>
+
+            <section class="form-section">
+              <div class="section-header">
+                <h3>Incident / Activation Details</h3>
+                <p>Capture the narrative, assets, and operational detail used on the HIO report.</p>
+              </div>
+              <div class="field-grid field-grid-2">
+                <label>
+                  Assets deployed
+                  <textarea
+                    name="equipmentDeployed"
+                    rows="4"
+                    placeholder="Breathing apparatus, rescue vehicles, suppression gear, monitors"
+                  ></textarea>
+                </label>
+                <label>
+                  Initial alert summary
+                  <textarea
+                    name="initialAlert"
+                    rows="4"
+                    placeholder="Who raised the alert, how it was detected, and initial condition"
+                  ></textarea>
+                </label>
+                <label>
+                  Immediate actions taken
+                  <textarea
+                    name="initialActions"
+                    rows="4"
+                    placeholder="Evacuation, isolation, first response, communications"
+                  ></textarea>
+                </label>
+                <label>
+                  Ongoing response actions
+                  <textarea
+                    name="responseActions"
+                    rows="4"
+                    placeholder="Staging, rescue entry, casualty extraction, suppression"
+                  ></textarea>
+                </label>
+                <label>
+                  Casualty summary
+                  <textarea
+                    name="casualtySummary"
+                    rows="4"
+                    placeholder="Number, condition, treatment, extraction status"
+                  ></textarea>
+                </label>
+                <label>
+                  Primary hazards
+                  <textarea
+                    name="hazards"
+                    rows="4"
+                    placeholder="Gas, instability, smoke, electrical isolation, water ingress"
+                  ></textarea>
+                </label>
+                <label>
+                  Environmental conditions
+                  <textarea
+                    name="environmentalConditions"
+                    rows="4"
+                    placeholder="Visibility, temperature, ventilation, ground conditions"
+                  ></textarea>
+                </label>
+                <label>
+                  Communications log
+                  <textarea
+                    name="communicationsLog"
+                    rows="4"
+                    placeholder="Control room updates, supervisors, external support"
+                  ></textarea>
+                </label>
+                <label>
+                  Investigation notes
+                  <textarea
+                    name="investigationNotes"
+                    rows="4"
+                    placeholder="Observed causes, scene conditions, evidence preservation"
+                  ></textarea>
+                </label>
+                <label>
+                  Recovery and follow-up
+                  <textarea
+                    name="recoveryActions"
+                    rows="4"
+                    placeholder="Return-to-work controls, inspections, debrief, corrective actions"
+                  ></textarea>
+                </label>
+              </div>
+            </section>
+
+            <section class="form-section">
+              <div class="section-header">
+                <h3>People, Agencies and Issues</h3>
+                <p>Capture the extra fields that appear on both pages of the HIO report.</p>
+              </div>
+              <div class="field-grid field-grid-2">
+                <label>
+                  Person involved name 1
+                  <input name="involvedPerson1Name" />
+                </label>
+                <label>
+                  Company name 1
+                  <input name="involvedPerson1Company" />
+                </label>
+                <label>
+                  Person involved name 2
+                  <input name="involvedPerson2Name" />
+                </label>
+                <label>
+                  Company name 2
+                  <input name="involvedPerson2Company" />
+                </label>
+                <label>
+                  Person involved name 3
+                  <input name="involvedPerson3Name" />
+                </label>
+                <label>
+                  Company name 3
+                  <input name="involvedPerson3Company" />
+                </label>
+                <label>
+                  Person involved name 4
+                  <input name="involvedPerson4Name" />
+                </label>
+                <label>
+                  Company name 4
+                  <input name="involvedPerson4Company" />
+                </label>
+                <label>
+                  External agencies involved
+                  <textarea
+                    name="externalAgenciesInvolved"
+                    rows="3"
+                    placeholder="Police, ambulance, regulator, contractor support"
+                  ></textarea>
+                </label>
+                <label>
+                  Handover to another agency
+                  <textarea
+                    name="handoverAgency"
+                    rows="3"
+                    placeholder="Agency, time, and handover details"
+                  ></textarea>
+                </label>
+                <label>
+                  Logistics issues
+                  <textarea
+                    name="logisticsIssues"
+                    rows="3"
+                    placeholder="Access, transport, staging, equipment delays"
+                  ></textarea>
+                </label>
+                <label>
+                  Communication issues
+                  <textarea
+                    name="communicationIssues"
+                    rows="3"
+                    placeholder="Coverage gaps, radio issues, dispatch constraints"
+                  ></textarea>
+                </label>
+                <label>
+                  Policy / procedure issues
+                  <textarea
+                    name="policyProcedureIssues"
+                    rows="3"
+                    placeholder="Procedure gaps, deviations, permit issues"
+                  ></textarea>
+                </label>
+                <label>
+                  Mutual aid issues
+                  <textarea
+                    name="mutualAidIssues"
+                    rows="3"
+                    placeholder="Mutual aid support, coordination issues, standby arrangements"
+                  ></textarea>
+                </label>
+                <label>
+                  Other issues / comments
+                  <textarea
+                    name="otherIssuesComments"
+                    rows="3"
+                    placeholder="Additional comments captured on the HIO report"
+                  ></textarea>
+                </label>
+                <label>
+                  Incident photo references
+                  <textarea
+                    name="incidentPhotoReferences"
+                    rows="3"
+                    placeholder="Photo filenames, links, or note that no photos are available"
+                  ></textarea>
+                </label>
+              </div>
+              <div class="field-grid field-grid-1">
+                <div class="picker-field photo-upload-shell">
+                  <div class="picker-head">
+                    <div>
+                      <span class="field-label">Incident Photos</span>
+                      <p class="helper-text">
+                        Upload images to attach them directly to the report and PDF export.
+                      </p>
+                    </div>
+                    <div class="picker-actions">
+                      <button class="btn btn-secondary btn-small" id="incident-photo-trigger-btn" type="button">
+                        Upload Pictures
+                      </button>
+                      <input id="incident-photo-upload" class="file-input-hidden" type="file" accept="image/*" multiple />
+                    </div>
+                  </div>
+                  <p class="helper-text" id="incident-photo-status">
+                    Uploaded images are stored with the incident in this browser.
+                  </p>
+                  <div class="photo-list" id="incident-photo-list" aria-live="polite"></div>
+                </div>
+              </div>
+            </section>
+
+            <section class="form-section">
+              <div class="section-header">
+                <h3>Radio Operator Log</h3>
+                <p>
+                  Create a timestamped event timeline for emergency vehicle
+                  movements, dispatch calls, and radio updates. Vehicle / unit
+                  options are managed in Settings.
+                </p>
+              </div>
+              <div class="radio-log-shell">
+                <div class="field-grid field-grid-4">
+                  <label>
+                    Timestamp
+                    <input id="radio-log-time" type="datetime-local" />
+                  </label>
+                  <label>
+                    Vehicle / unit
+                    <select id="radio-log-unit">
+                      <option value="">Select unit</option>
+                    </select>
+                  </label>
+                  <label>
+                    Movement
+                    <select id="radio-log-movement">
+                      <option>Dispatched</option>
+                      <option>En route</option>
+                      <option>Arrived at staging</option>
+                      <option>Entered mine</option>
+                      <option>Arrived on scene</option>
+                      <option>On Scene SITREP</option>
+                      <option>Departed scene</option>
+                      <option>Transporting casualty</option>
+                      <option>Exited mine</option>
+                      <option>Returned to base</option>
+                      <option>Other</option>
+                    </select>
+                  </label>
+                  <label>
+                    Radio channel
+                    <select id="radio-log-channel">
+                      <option value="">Select channel</option>
+                    </select>
+                  </label>
+                </div>
+                <div class="field-grid field-grid-2">
+                  <label>
+                    Location / route
+                    <input
+                      id="radio-log-location"
+                      placeholder="Portal to 640 ramp, north decline intersection"
+                    />
+                  </label>
+                  <label>
+                    Operator notes
+                    <textarea
+                      id="radio-log-notes"
+                      rows="3"
+                      placeholder="Vehicle movement, escort details, delays, instructions"
+                    ></textarea>
+                  </label>
+                </div>
+                <div class="radio-log-actions">
+                  <button class="btn btn-secondary" id="save-radio-log-btn" type="button">
+                    Add Radio Log Entry
+                  </button>
+                  <button class="btn btn-ghost hidden" id="cancel-radio-edit-btn" type="button">
+                    Cancel Edit
+                  </button>
+                  <p class="helper-text" id="radio-log-status">
+                    Entries appear below in time order and are saved with the incident.
+                  </p>
+                </div>
+                <div class="radio-log-list" id="radio-log-list" aria-live="polite"></div>
+              </div>
+            </section>
+          </form>
+
+          <aside class="panel draft-panel">
+            <div class="panel-stack">
+              <div>
+                <p class="panel-kicker">Draft Snapshot</p>
+                <h2 id="draft-title">New incident draft</h2>
+              </div>
+              <p class="draft-summary" id="draft-summary-text"></p>
+              <div class="draft-badges" id="draft-badges"></div>
+              <div class="mini-metric-grid" id="draft-mini-metrics"></div>
+            </div>
+
+            <section class="sidebar-block">
+              <h3>Assigned Workers</h3>
+              <div class="stack-list" id="draft-assigned-list"></div>
+            </section>
+
+            <section class="sidebar-block">
+              <h3>Radio Timeline Preview</h3>
+              <div class="timeline compact-timeline" id="draft-radio-preview"></div>
+            </section>
+          </aside>
+        </div>
+      </section>
+
+      <section class="view" data-view="incidents">
+        <div class="view-intro">
+          <div>
+            <p class="panel-kicker">Incident register</p>
+            <h2>Browse saved incidents</h2>
+            <p>
+              Search the register, select an incident, and inspect the full
+              command record with worker assignments and radio traffic.
+            </p>
+          </div>
+          <div class="view-actions">
+            <button class="btn btn-primary" id="create-from-register-btn" type="button">
+              New Incident
+            </button>
+          </div>
+        </div>
+
+        <div class="view-grid registry-grid">
+          <aside class="panel register-panel">
+            <div class="panel-header">
+              <div>
+                <p class="panel-kicker">Saved Logs</p>
+                <h2>Incident List</h2>
+              </div>
+              <input
+                class="search-input"
+                id="incident-search"
+                type="search"
+                placeholder="Search by ID, type, location"
+                aria-label="Search incidents"
+              />
+            </div>
+            <div class="incident-list" id="incident-list" aria-live="polite"></div>
+          </aside>
+
+          <section class="panel detail-panel">
+            <div class="panel-header detail-header">
+              <div>
+                <p class="panel-kicker">Incident Detail</p>
+                <h2 id="detail-title">Incident Detail</h2>
+              </div>
+              <div class="detail-actions">
+                <button class="btn btn-ghost" id="edit-selected-incident-btn" type="button">
+                  Edit Incident
+                </button>
+                <button class="btn btn-secondary" id="export-json-btn" type="button">
+                  Export JSON
+                </button>
+                <button class="btn btn-secondary" id="copy-summary-btn" type="button">
+                  Copy Summary
+                </button>
+                  <button class="btn btn-secondary" id="print-report-btn" type="button">
+                  Export PDF
+                  </button>
+              </div>
+            </div>
+
+            <article class="report-sheet" id="report-sheet">
+              <div class="report-empty" id="report-empty">
+                Select an incident from the register to review its full detail.
+              </div>
+              <div class="report-content hidden" id="report-content">
+                <header class="report-banner">
+                  <div class="report-brand">
+                    <img
+                      class="report-logo"
+                      src="logo-hancock-iron-ore.svg"
+                      alt="Hancock Iron Ore"
+                    />
+                    <div>
+                      <p class="report-kicker">Emergency Incident Report</p>
+                      <h3 id="report-title">Incident</h3>
+                    </div>
+                  </div>
+                  <div class="report-badge" id="report-status-badge">Open</div>
+                </header>
+
+                <section class="report-grid" id="report-grid"></section>
+
+                <section class="report-block">
+                  <h4>Executive Summary</h4>
+                  <p id="report-summary"></p>
+                </section>
+
+                <section class="report-block">
+                  <h4>Assigned Personnel</h4>
+                  <div class="people-cards" id="report-assigned-personnel"></div>
+                </section>
+
+                <section class="report-block">
+                  <h4>Action Timeline</h4>
+                  <div class="timeline" id="report-timeline"></div>
+                </section>
+
+                <section class="report-block">
+                  <h4>Radio Operator Timeline</h4>
+                  <div class="timeline" id="report-radio-timeline"></div>
+                </section>
+
+                <section class="report-block">
+                  <h4>Operational Notes</h4>
+                  <div class="notes-grid" id="report-notes"></div>
+                </section>
+
+                <section class="report-block">
+                  <h4>Incident Photos</h4>
+                  <div class="photo-grid" id="report-photos"></div>
+                </section>
+
+                <footer class="report-footer">
+                  <p id="report-generated-at"></p>
+                </footer>
+              </div>
+            </article>
+          </section>
+        </div>
+      </section>
+
+      <section class="view" data-view="reporting">
+        <div class="view-intro">
+          <div>
+            <p class="panel-kicker">Reporting and analytics</p>
+            <h2>Generate operational reports</h2>
+            <p>
+              Filter saved incidents by period, status, severity, and location
+              to generate management-ready reporting from the live register.
+            </p>
+          </div>
+          <div class="view-actions">
+            <button class="btn btn-secondary" id="copy-reporting-summary-btn" type="button">
+              Copy Summary
+            </button>
+            <button class="btn btn-primary" id="export-reporting-csv-btn" type="button">
+              Export CSV
+            </button>
+          </div>
+        </div>
+
+        <div class="view-grid reporting-grid">
+          <form id="reporting-form" class="panel reporting-filter-panel">
+            <div class="form-topline">
+              <div>
+                <p class="panel-kicker">Report Filters</p>
+                <h2>Build report scope</h2>
+              </div>
+              <div class="form-actions">
+                <button class="btn btn-ghost" id="reset-reporting-btn" type="button">
+                  Reset Filters
+                </button>
+                <button class="btn btn-primary" type="submit">Generate Report</button>
+              </div>
+            </div>
+            <p class="helper-text" id="reporting-form-status">
+              Filter the incident register and generate a current reporting view.
+            </p>
+
+            <div class="field-grid field-grid-2">
+              <label>
+                Reporting period
+                <select id="reporting-preset" name="preset">
+                  <option value="last7">Last 7 days</option>
+                  <option value="last30">Last 30 days</option>
+                  <option value="last90">Last 90 days</option>
+                  <option value="ytd">Year to date</option>
+                  <option value="all">All incidents</option>
+                  <option value="custom">Custom range</option>
+                </select>
+              </label>
+              <label>
+                Location
+                <select id="reporting-location-filter" name="location">
+                  <option value="">All locations</option>
+                  <option>Mine</option>
+                  <option>Port</option>
+                  <option>Rail</option>
+                  <option>Other</option>
+                </select>
+              </label>
+              <label>
+                From date
+                <input id="reporting-date-from" name="dateFrom" type="date" />
+              </label>
+              <label>
+                To date
+                <input id="reporting-date-to" name="dateTo" type="date" />
+              </label>
+              <label>
+                Incident status
+                <select id="reporting-status-filter" name="status">
+                  <option value="">All statuses</option>
+                  <option>Open</option>
+                  <option>Contained</option>
+                  <option>Closed</option>
+                  <option>Under Investigation</option>
+                </select>
+              </label>
+              <label>
+                Severity
+                <select id="reporting-severity-filter" name="severity">
+                  <option value="">All severity</option>
+                  <option>Low</option>
+                  <option>Moderate</option>
+                  <option>High</option>
+                  <option>Critical</option>
+                </select>
+              </label>
+            </div>
+
+            <div class="field-grid field-grid-1">
+              <label>
+                Detailed incident type
+                <select id="reporting-incident-type-filter" name="incidentType">
+                  <option value="">All incident types</option>
+                </select>
+              </label>
+            </div>
+          </form>
+
+          <section class="panel reporting-dashboard">
+            <div class="reporting-hero">
+              <div>
+                <p class="panel-kicker">Generated report</p>
+                <h2 id="reporting-title">Operational report</h2>
+                <p class="reporting-summary-text" id="reporting-summary">
+                  Generate a report to review the current incident picture.
+                </p>
+              </div>
+              <div class="reporting-hero-meta">
+                <div class="report-badge" id="reporting-count-badge">0 incidents</div>
+                <p class="helper-text" id="reporting-generated-at">
+                  Generated reports will show the latest filter run time here.
+                </p>
+              </div>
+            </div>
+
+            <div class="reporting-metric-grid" id="reporting-metrics"></div>
+
+            <section class="report-block report-surface">
+              <div class="section-header">
+                <h3>Breakdowns</h3>
+                <p>Review the filtered incident mix across key operating dimensions.</p>
+              </div>
+              <div class="reporting-breakdown-grid" id="reporting-breakdowns"></div>
+            </section>
+
+            <section class="report-block report-surface">
+              <div class="section-header">
+                <h3>Performance and Resourcing</h3>
+                <p>Track timing, communications load, regulatory status, and disruption.</p>
+              </div>
+              <div class="reporting-stat-grid" id="reporting-performance"></div>
+            </section>
+
+            <section class="report-block report-surface">
+              <div class="section-header">
+                <h3>Personnel Utilisation</h3>
+                <p>See which workers are most frequently assigned in the filtered incident set.</p>
+              </div>
+              <div class="people-cards" id="reporting-personnel"></div>
+            </section>
+
+            <section class="report-block report-surface">
+              <div class="section-header">
+                <h3>Filtered Incident Register</h3>
+                <p>Open any incident directly from the report output to inspect detail.</p>
+              </div>
+              <div class="reporting-table-wrap">
+                <table class="reporting-table">
+                  <thead>
+                    <tr>
+                      <th>Incident</th>
+                      <th>Reported</th>
+                      <th>Status</th>
+                      <th>Severity</th>
+                      <th>Type</th>
+                      <th>Location</th>
+                      <th>Workers</th>
+                      <th>Casualties</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody id="reporting-incidents"></tbody>
+                </table>
+              </div>
+            </section>
+          </section>
+        </div>
+      </section>
+
+      <section class="view" data-view="personnel">
+        <div class="view-intro">
+          <div>
+            <p class="panel-kicker">Worker roster</p>
+            <h2>Manage personnel</h2>
+            <p>
+              Add workers to the roster, track their crews and status, then
+              assign them directly inside new incident forms.
+            </p>
+          </div>
+          <div class="view-actions">
+            <button class="btn btn-secondary" id="open-create-from-personnel-btn" type="button">
+              Go to Incident Form
+            </button>
+          </div>
+        </div>
+
+        <div class="view-grid personnel-grid">
+          <form id="personnel-form" class="panel personnel-form">
+            <div class="form-topline">
+              <div>
+                <p class="panel-kicker">Personnel Workspace</p>
+                <h2 id="personnel-workspace-title">Add Worker</h2>
+              </div>
+              <div class="form-actions">
+                <button class="btn btn-ghost" id="reset-personnel-btn" type="button">
+                  Reset
+                </button>
+                <button class="btn btn-primary" type="submit">Save Worker</button>
+              </div>
+            </div>
+            <p class="helper-text" id="personnel-form-status">
+              Add workers to the roster so they can be assigned to incidents.
+            </p>
+
+            <div class="field-grid field-grid-2">
+              <label>
+                Employee ID
+                <input name="employeeId" required />
+              </label>
+              <label>
+                Full name
+                <input name="fullName" required />
+              </label>
+              <label>
+                Role / trade
+                <input name="role" required />
+              </label>
+              <label>
+                Crew / team
+                <select name="crew">
+                  <option value="">Select crew / team</option>
+                </select>
+              </label>
+              <label>
+                Contact / radio call sign
+                <input name="phone" />
+              </label>
+              <label>
+                Availability
+                <select name="status">
+                  <option>Available</option>
+                  <option>On shift</option>
+                  <option>Underground</option>
+                  <option>Off site</option>
+                  <option>Unavailable</option>
+                </select>
+              </label>
+            </div>
+
+            <div class="field-grid field-grid-1">
+              <label>
+                Certifications / notes
+                <textarea
+                  name="certifications"
+                  rows="4"
+                  placeholder="Rescue trained, medic, heavy vehicle ticket, breathing apparatus, notes"
+                ></textarea>
+              </label>
+            </div>
+          </form>
+
+          <section class="panel roster-panel">
+            <div class="panel-header">
+              <div>
+                <p class="panel-kicker">Personnel Register</p>
+                <h2>Worker List</h2>
+              </div>
+              <input
+                class="search-input"
+                id="personnel-search"
+                type="search"
+                placeholder="Search by name, role, crew"
+                aria-label="Search personnel"
+              />
+            </div>
+            <div class="helper-text roster-summary" id="personnel-count-label">
+              0 workers in roster
+            </div>
+            <div class="personnel-list" id="personnel-list" aria-live="polite"></div>
+          </section>
+        </div>
+      </section>
+
+      <section class="view" data-view="settings">
+        <div class="view-intro">
+          <div>
+            <p class="panel-kicker">App settings</p>
+            <h2>Manage radio log options</h2>
+            <p>
+              Update the vehicle and unit dropdown used by the radio operator
+              log. Enter one vehicle or unit per line.
+            </p>
+          </div>
+        </div>
+
+        <div class="view-grid settings-grid">
+          <form id="settings-form" class="panel settings-panel">
+            <div class="form-topline">
+              <div>
+                <p class="panel-kicker">Radio Operator Settings</p>
+                <h2>Vehicle / unit list</h2>
+              </div>
+              <div class="form-actions">
+                <button class="btn btn-ghost" id="reset-settings-btn" type="button">
+                  Reset Defaults
+                </button>
+                <button class="btn btn-primary" type="submit">Save Settings</button>
+              </div>
+            </div>
+            <p class="helper-text" id="settings-form-status">
+              Maintain the dropdown list used in the radio operator log.
+            </p>
+
+            <div class="field-grid field-grid-1">
+              <label>
+                Vehicles / units
+                <textarea
+                  id="settings-radio-units"
+                  rows="14"
+                  placeholder="ERT Buggy 1&#10;Ambulance 2&#10;Rescue 1"
+                ></textarea>
+              </label>
+            </div>
+          </form>
+
+          <aside class="panel settings-side-panel">
+            <div class="panel-stack">
+              <div>
+                <p class="panel-kicker">Fixed channel list</p>
+                <h2>Radio Channels</h2>
+                <p class="helper-text">
+                  These channels are available in the radio log dropdown.
+                </p>
+              </div>
+              <div class="chip-list" id="settings-channel-list"></div>
+            </div>
+          </aside>
+        </div>
+      </section>
+    </main>
+
+    <section class="hio-export-pages" id="hio-export-pages" aria-hidden="true">
+      <section class="hio-page" id="hio-export-page-1"></section>
+      <section class="hio-page" id="hio-export-page-2"></section>
+    </section>
+
+    <template id="incident-item-template">
+      <button class="incident-card" type="button">
+        <span class="incident-card-top">
+          <strong class="incident-card-id"></strong>
+          <span class="incident-card-status"></span>
+        </span>
+        <span class="incident-card-type"></span>
+        <span class="incident-card-location"></span>
+        <span class="incident-card-foot">
+          <span class="incident-card-meta incident-card-updated"></span>
+          <span class="incident-card-meta incident-card-assigned"></span>
+        </span>
+      </button>
+    </template>
+
+    <template id="personnel-item-template">
+      <article class="person-card">
+        <div class="person-card-top">
+          <div>
+            <h3 class="person-name"></h3>
+            <p class="person-role"></p>
+          </div>
+          <span class="person-status"></span>
+        </div>
+        <div class="person-chip-row">
+          <span class="person-chip person-employee"></span>
+          <span class="person-chip person-crew"></span>
+          <span class="person-chip person-phone"></span>
+        </div>
+        <p class="person-notes"></p>
+        <div class="person-card-actions">
+          <button class="btn btn-ghost btn-small" data-person-action="edit" type="button">
+            Edit
+          </button>
+          <button class="btn btn-ghost btn-small" data-person-action="remove" type="button">
+            Remove
+          </button>
+        </div>
+      </article>
+    </template>
+
+    <script src="app.js"></script>
+  </body>
+</html>

@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 372 135" role="img" aria-labelledby="title desc">
+  <title id="title">Hancock Iron Ore</title>
+  <desc id="desc">Hancock Iron Ore logo rendered in black and white.</desc>
+  <rect width="372" height="135" fill="#ffffff" />
+  <text
+    x="186"
+    y="63"
+    text-anchor="middle"
+    font-family="Arial Black, Arial, Helvetica, sans-serif"
+    font-size="66"
+    letter-spacing="1"
+    fill="#000000"
+  >
+    HANCOCK
+  </text>
+  <rect x="0" y="79" width="372" height="56" fill="#000000" />
+  <text
+    x="186"
+    y="123"
+    text-anchor="middle"
+    font-family="Arial, Helvetica, sans-serif"
+    font-size="34"
+    letter-spacing="5"
+    fill="#ffffff"
+  >
+    IRON ORE
+  </text>
+  <rect x="0" y="78" width="372" height="1" fill="#000000" />
+</svg>
