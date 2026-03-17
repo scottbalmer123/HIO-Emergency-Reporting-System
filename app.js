@@ -25,6 +25,7 @@ const RADIO_CHANNELS = [
   "BA OPS 2 Mine",
   "BA OPS 1 Port",
   "BA OPS 2 Port",
+  "WHISPER",
 ];
 const CREW_OPTIONS = [
   "SV A",
