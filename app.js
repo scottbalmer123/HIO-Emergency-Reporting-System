@@ -25,8 +25,6 @@ const RADIO_CHANNELS = [
   "BA OPS 2 Mine",
   "BA OPS 1 Port",
   "BA OPS 2 Port",
-  "WHISPER",
-  "Phone",
 ];
 const CREW_OPTIONS = [
   "SV A",
@@ -1313,7 +1311,6 @@ function getActivationMethods(incident) {
 
 function getInvolvedPeople(incident) {
   const people = [];
-  const seenNames = new Set();
 
   for (let index = 1; index <= 4; index += 1) {
     const name = singleLine(incident[`involvedPerson${index}Name`]);
@@ -1323,32 +1320,11 @@ function getInvolvedPeople(incident) {
       continue;
     }
 
-    if (name) {
-      seenNames.add(name.toLowerCase());
-    }
-
     people.push({
       name: name || "Not recorded",
       company: company || "Not recorded",
     });
   }
-
-  getAssignedWorkers(incident.assignedPersonnelIds).forEach((worker) => {
-    if (people.length >= 4) {
-      return;
-    }
-
-    const normalizedName = worker.fullName.toLowerCase();
-    if (seenNames.has(normalizedName)) {
-      return;
-    }
-
-    seenNames.add(normalizedName);
-    people.push({
-      name: worker.fullName,
-      company: worker.crew || "Hancock Iron Ore",
-    });
-  });
 
   return people.slice(0, 4);
 }
@@ -1360,6 +1336,80 @@ function truncateBlockText(value, maxLength) {
   }
 
   return `${text.slice(0, Math.max(0, maxLength - 3)).trimEnd()}...`;
+}
+
+const HIO_DETAIL_MEASURE_WIDTH_MM = 138;
+const HIO_DETAIL_FIRST_PAGE_HEIGHT_MM = 102;
+const HIO_DETAIL_CONTINUATION_HEIGHT_MM = 220;
+
+function createHioTextMeasure(heightMm) {
+  const measure = document.createElement("div");
+  measure.className = "hio-large-box";
+  Object.assign(measure.style, {
+    position: "fixed",
+    left: "-10000px",
+    top: "0",
+    width: `${HIO_DETAIL_MEASURE_WIDTH_MM}mm`,
+    minHeight: `${heightMm}mm`,
+    height: `${heightMm}mm`,
+    overflow: "hidden",
+    visibility: "hidden",
+    pointerEvents: "none",
+    boxSizing: "border-box",
+    zIndex: "-1",
+  });
+  document.body.appendChild(measure);
+  return measure;
+}
+
+function takeHioTextChunk(lines, startIndex, heightMm) {
+  const measure = createHioTextMeasure(heightMm);
+  let endIndex = startIndex;
+  let bestText = "";
+
+  while (endIndex < lines.length) {
+    const candidate = lines.slice(startIndex, endIndex + 1).join("\n");
+    measure.textContent = candidate || "\u00a0";
+
+    if (measure.scrollHeight > measure.clientHeight) {
+      if (endIndex === startIndex) {
+        bestText = candidate;
+        endIndex += 1;
+      }
+      break;
+    }
+
+    bestText = candidate;
+    endIndex += 1;
+  }
+
+  measure.remove();
+
+  return {
+    text: bestText.trimEnd(),
+    nextIndex: endIndex,
+  };
+}
+
+function paginateHioDetailBlock(detailText) {
+  const normalizedText = String(detailText || "").trim() || "No incident / activation detail recorded.";
+  const lines = normalizedText.split("\n");
+  const pages = [];
+  let cursor = 0;
+
+  while (cursor < lines.length) {
+    const heightMm = pages.length === 0 ? HIO_DETAIL_FIRST_PAGE_HEIGHT_MM : HIO_DETAIL_CONTINUATION_HEIGHT_MM;
+    const chunk = takeHioTextChunk(lines, cursor, heightMm);
+
+    if (!chunk.text && chunk.nextIndex <= cursor) {
+      break;
+    }
+
+    pages.push(chunk.text || " ");
+    cursor = chunk.nextIndex;
+  }
+
+  return pages.length > 0 ? pages : [normalizedText];
 }
 
 function buildHioChronologyEntries(incident) {
@@ -1435,7 +1485,7 @@ function buildHioDetailBlock(incident) {
       sections.push(`${label}: ${singleLine(value)}`);
     });
 
-  return truncateBlockText(sections.join("\n\n"), 1800) || "No incident / activation detail recorded.";
+  return sections.join("\n\n") || "No incident / activation detail recorded.";
 }
 
 function buildHioPhotoBlock(incident) {
@@ -1483,7 +1533,7 @@ function renderHioBlockValue(value) {
   return text ? escapeHtml(text) : "&nbsp;";
 }
 
-function renderHioPageMeta(pageNumber) {
+function renderHioPageMeta(pageNumber, totalPages) {
   return `
     <footer class="hio-page-meta">
       <span><strong>Rev</strong>3</span>
@@ -1491,7 +1541,7 @@ function renderHioPageMeta(pageNumber) {
       <span><strong>Author</strong>D. Newspoint</span>
       <span><strong>Approver</strong>Drew Duddy</span>
       <span><strong>Issue Date</strong>13/11/2023</span>
-      <span><strong>Page</strong>${pageNumber} of 2</span>
+      <span><strong>Page</strong>${pageNumber} of ${totalPages}</span>
     </footer>
   `;
 }
@@ -1516,6 +1566,229 @@ function renderHioPhotoGallery(photos) {
         )
         .join("")}
     </div>
+  `;
+}
+
+function renderHioFirstPage(incident, involvedPeople, detailBlock, pageNumber, totalPages) {
+  const category = incident.templateIncidentCategory || inferTemplateIncidentCategory(incident);
+
+  return `
+    <section class="hio-page">
+      <article class="hio-export-sheet">
+        <header class="hio-export-header">
+          <h2>Emergency &amp; Security Activation Report</h2>
+          <img class="hio-export-logo" src="logo-hancock-iron-ore.svg" alt="Hancock Iron Ore" />
+        </header>
+        <div class="hio-export-rule"></div>
+
+        <table class="hio-export-table">
+          <tr>
+            <th colspan="5" class="hio-section-bar">Initial Notification Details</th>
+          </tr>
+          <tr>
+            <th class="hio-label-cell">Location:</th>
+            <td colspan="4">
+              <div class="hio-checkbox-row">
+                ${renderHioCheck("Port", incident.templateLocationType === "Port")}
+                ${renderHioCheck("Rail", incident.templateLocationType === "Rail")}
+                ${renderHioCheck("Mine", incident.templateLocationType === "Mine")}
+                ${renderHioCheck("Other", incident.templateLocationType === "Other")}
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <th class="hio-label-cell">Exact Location:</th>
+            <td colspan="4">${renderHioLineValue(incident.locationDetail)}</td>
+          </tr>
+          <tr>
+            <th class="hio-label-cell">ESO Team:</th>
+            <td colspan="4">${renderHioLineValue(incident.esoTeam)}</td>
+          </tr>
+          <tr>
+            <th class="hio-label-cell">Date:</th>
+            <td colspan="4">${renderHioLineValue(formatDateOnly(incident.reportedAt))}</td>
+          </tr>
+          <tr>
+            <th class="hio-label-cell">ESO Supervisor:</th>
+            <td colspan="4">${renderHioLineValue(incident.esoSupervisor)}</td>
+          </tr>
+          <tr>
+            <th class="hio-label-cell">Total no. of Personnel:</th>
+            <td colspan="4">${renderHioLineValue(incident.personnelCount)}</td>
+          </tr>
+          <tr>
+            <th class="hio-label-cell">Incident Type:</th>
+            <td colspan="4">
+              <div class="hio-checkbox-row">
+                ${renderHioCheck("Security", category === "Security")}
+                ${renderHioCheck("Medical", category === "Medical")}
+                ${renderHioCheck("Emergency Response", category === "Emergency Response")}
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <th class="hio-label-cell">Activation Method:</th>
+            <td colspan="4">
+              <div class="hio-checkbox-row">
+                ${renderHioCheck("Radio", incident.activationMethodRadio)}
+                ${renderHioCheck("Smart Graphics", incident.activationMethodSmartGraphics)}
+                ${renderHioCheck("In Person", incident.activationMethodInPerson)}
+                ${renderHioCheck("Phone", incident.activationMethodPhone)}
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <th class="hio-label-cell">Time notified:</th>
+            <td colspan="4">${renderHioLineValue(formatTimeOnly(incident.reportedAt))}</td>
+          </tr>
+          <tr>
+            <th class="hio-label-cell">Time Superintendent and Managers notified:</th>
+            <td>
+              <div class="hio-mini-label">ESO Supt.</div>
+              <div class="hio-mini-value">${renderHioLineValue(incident.timeEsoSuperintendentNotified)}</div>
+            </td>
+            <td>
+              <div class="hio-mini-label">SSE or ALT SSE</div>
+              <div class="hio-mini-value">${renderHioLineValue(incident.timeSseAltNotified)}</div>
+            </td>
+            <td colspan="2">
+              <div class="hio-mini-label">Whispir/Other</div>
+              <div class="hio-mini-value">${renderHioLineValue(incident.timeWhispirOtherNotified)}</div>
+            </td>
+          </tr>
+          <tr>
+            <th class="hio-label-cell">Time of arrival at Site:</th>
+            <td colspan="2">${renderHioLineValue(incident.arrivalAtSiteTime)}</td>
+            <th class="hio-label-cell">Time of departure:</th>
+            <td>${renderHioLineValue(incident.departureTime)}</td>
+          </tr>
+          <tr>
+            <th colspan="5" class="hio-section-bar">Incident / Activation Details</th>
+          </tr>
+          <tr>
+            <th class="hio-label-cell hio-top">Assets Deployed:</th>
+            <td colspan="4">
+              <div class="hio-large-box hio-large-box--page-one">${renderHioBlockValue(detailBlock)}</div>
+            </td>
+          </tr>
+          <tr>
+            <th class="hio-label-cell">ESO Primary Role:</th>
+            <td colspan="4">${renderHioLineValue(incident.esoPrimaryRole)}</td>
+          </tr>
+          ${involvedPeople
+            .map(
+              (person) => `
+                <tr>
+                  <th class="hio-label-cell">Person involved name:</th>
+                  <td colspan="2">${renderHioLineValue(person.name)}</td>
+                  <th class="hio-label-cell">Company name:</th>
+                  <td>${renderHioLineValue(person.company)}</td>
+                </tr>
+              `
+            )
+            .join("")}
+          <tr>
+            <th class="hio-label-cell">External Agencies Involved:</th>
+            <td colspan="4">${renderHioLineValue(incident.externalAgenciesInvolved)}</td>
+          </tr>
+          <tr>
+            <th class="hio-label-cell">Handover (to another agency):</th>
+            <td colspan="4">${renderHioLineValue(incident.handoverAgency)}</td>
+          </tr>
+          <tr>
+            <th class="hio-label-cell">Logistics Issues:</th>
+            <td colspan="4">${renderHioLineValue(incident.logisticsIssues)}</td>
+          </tr>
+          <tr>
+            <th class="hio-label-cell">Communication Issues:</th>
+            <td colspan="4">${renderHioLineValue(incident.communicationIssues)}</td>
+          </tr>
+          <tr>
+            <th class="hio-label-cell">Policy/Procedure:</th>
+            <td colspan="4">${renderHioLineValue(incident.policyProcedureIssues)}</td>
+          </tr>
+        </table>
+
+        ${renderHioPageMeta(pageNumber, totalPages)}
+      </article>
+    </section>
+  `;
+}
+
+function renderHioContinuationPage(detailBlock, pageNumber, totalPages) {
+  return `
+    <section class="hio-page">
+      <article class="hio-export-sheet">
+        <header class="hio-export-header">
+          <h2>Emergency &amp; Security Activation Report</h2>
+          <img class="hio-export-logo" src="logo-hancock-iron-ore.svg" alt="Hancock Iron Ore" />
+        </header>
+        <div class="hio-export-rule"></div>
+
+        <table class="hio-export-table">
+          <tr>
+            <th colspan="5" class="hio-section-bar">Incident / Activation Details (continued)</th>
+          </tr>
+          <tr>
+            <th class="hio-label-cell hio-top">Assets Deployed:</th>
+            <td colspan="4">
+              <div class="hio-large-box hio-large-box--continuation">${renderHioBlockValue(detailBlock)}</div>
+            </td>
+          </tr>
+        </table>
+
+        ${renderHioPageMeta(pageNumber, totalPages)}
+      </article>
+    </section>
+  `;
+}
+
+function renderHioPhotoPage(incident, pageNumber, totalPages) {
+  return `
+    <section class="hio-page">
+      <article class="hio-export-sheet">
+        <header class="hio-export-header">
+          <h2>Emergency &amp; Security Activation Report</h2>
+          <img class="hio-export-logo" src="logo-hancock-iron-ore.svg" alt="Hancock Iron Ore" />
+        </header>
+        <div class="hio-export-rule"></div>
+
+        <table class="hio-export-table hio-export-table-page-two">
+          <tr>
+            <th class="hio-label-cell">Mutual Aid Issues:</th>
+            <td>${renderHioLineValue(incident.mutualAidIssues)}</td>
+          </tr>
+          <tr>
+            <th class="hio-label-cell">Other issues/comments:</th>
+            <td>${renderHioLineValue(incident.otherIssuesComments)}</td>
+          </tr>
+          <tr>
+            <th colspan="2" class="hio-section-bar">Incident Photos if Available</th>
+          </tr>
+          <tr>
+            <td colspan="2">
+              <div class="hio-photo-box">
+                <div class="hio-photo-layout">
+                  ${renderHioPhotoGallery(incident.incidentPhotos)}
+                  <div class="hio-photo-summary">${renderHioBlockValue(buildHioPhotoBlock(incident))}</div>
+                </div>
+              </div>
+            </td>
+          </tr>
+        </table>
+
+        <table class="hio-export-table hio-export-signoff">
+          <tr>
+            <th class="hio-label-cell">Report Compiled By:</th>
+            <td>${renderHioLineValue(getCompiledByValue(incident))}</td>
+            <th class="hio-label-cell">Date:</th>
+            <td>${renderHioLineValue(formatDateOnly(getCompiledDateValue(incident)))}</td>
+          </tr>
+        </table>
+
+        ${renderHioPageMeta(pageNumber, totalPages)}
+      </article>
+    </section>
   `;
 }
 
@@ -2851,192 +3124,18 @@ function exportSelectedIncident() {
 
 function renderHioExport(incident) {
   const involvedPeople = getInvolvedPeople(incident);
-  const category = incident.templateIncidentCategory || inferTemplateIncidentCategory(incident);
+  const detailPages = paginateHioDetailBlock(buildHioDetailBlock(incident));
+  const totalPages = detailPages.length + 1;
+  const continuationPages = detailPages
+    .slice(1)
+    .map((detailBlock, index) => renderHioContinuationPage(detailBlock, index + 2, totalPages))
+    .join("");
 
-  dom.hioExportPage1.innerHTML = `
-    <article class="hio-export-sheet">
-      <header class="hio-export-header">
-        <h2>Emergency &amp; Security Activation Report</h2>
-        <img class="hio-export-logo" src="logo-hancock-iron-ore.svg" alt="Hancock Iron Ore" />
-      </header>
-      <div class="hio-export-rule"></div>
-
-      <table class="hio-export-table">
-        <tr>
-          <th colspan="5" class="hio-section-bar">Initial Notification Details</th>
-        </tr>
-        <tr>
-          <th class="hio-label-cell">Location:</th>
-          <td colspan="4">
-            <div class="hio-checkbox-row">
-              ${renderHioCheck("Port", incident.templateLocationType === "Port")}
-              ${renderHioCheck("Rail", incident.templateLocationType === "Rail")}
-              ${renderHioCheck("Mine", incident.templateLocationType === "Mine")}
-              ${renderHioCheck("Other", incident.templateLocationType === "Other")}
-            </div>
-          </td>
-        </tr>
-        <tr>
-          <th class="hio-label-cell">Exact Location:</th>
-          <td colspan="4">${renderHioLineValue(incident.locationDetail)}</td>
-        </tr>
-        <tr>
-          <th class="hio-label-cell">ESO Team:</th>
-          <td colspan="4">${renderHioLineValue(incident.esoTeam)}</td>
-        </tr>
-        <tr>
-          <th class="hio-label-cell">Date:</th>
-          <td colspan="4">${renderHioLineValue(formatDateOnly(incident.reportedAt))}</td>
-        </tr>
-        <tr>
-          <th class="hio-label-cell">ESO Supervisor:</th>
-          <td colspan="4">${renderHioLineValue(incident.esoSupervisor)}</td>
-        </tr>
-        <tr>
-          <th class="hio-label-cell">Total no. of Personnel:</th>
-          <td colspan="4">${renderHioLineValue(incident.personnelCount)}</td>
-        </tr>
-        <tr>
-          <th class="hio-label-cell">Incident Type:</th>
-          <td colspan="4">
-            <div class="hio-checkbox-row">
-              ${renderHioCheck("Security", category === "Security")}
-              ${renderHioCheck("Medical", category === "Medical")}
-              ${renderHioCheck("Emergency Response", category === "Emergency Response")}
-            </div>
-          </td>
-        </tr>
-        <tr>
-          <th class="hio-label-cell">Activation Method:</th>
-          <td colspan="4">
-            <div class="hio-checkbox-row">
-              ${renderHioCheck("Radio", incident.activationMethodRadio)}
-              ${renderHioCheck("Smart Graphics", incident.activationMethodSmartGraphics)}
-              ${renderHioCheck("In Person", incident.activationMethodInPerson)}
-              ${renderHioCheck("Phone", incident.activationMethodPhone)}
-            </div>
-          </td>
-        </tr>
-        <tr>
-          <th class="hio-label-cell">Time notified:</th>
-          <td colspan="4">${renderHioLineValue(formatTimeOnly(incident.reportedAt))}</td>
-        </tr>
-        <tr>
-          <th class="hio-label-cell">Time Superintendent and Managers notified:</th>
-          <td>
-            <div class="hio-mini-label">ESO Supt.</div>
-            <div class="hio-mini-value">${renderHioLineValue(incident.timeEsoSuperintendentNotified)}</div>
-          </td>
-          <td>
-            <div class="hio-mini-label">SSE or ALT SSE</div>
-            <div class="hio-mini-value">${renderHioLineValue(incident.timeSseAltNotified)}</div>
-          </td>
-          <td colspan="2">
-            <div class="hio-mini-label">Whispir/Other</div>
-            <div class="hio-mini-value">${renderHioLineValue(incident.timeWhispirOtherNotified)}</div>
-          </td>
-        </tr>
-        <tr>
-          <th class="hio-label-cell">Time of arrival at Site:</th>
-          <td colspan="2">${renderHioLineValue(incident.arrivalAtSiteTime)}</td>
-          <th class="hio-label-cell">Time of departure:</th>
-          <td>${renderHioLineValue(incident.departureTime)}</td>
-        </tr>
-        <tr>
-          <th colspan="5" class="hio-section-bar">Incident / Activation Details</th>
-        </tr>
-        <tr>
-          <th class="hio-label-cell hio-top">Assets Deployed:</th>
-          <td colspan="4">
-            <div class="hio-large-box">${renderHioBlockValue(buildHioDetailBlock(incident))}</div>
-          </td>
-        </tr>
-        <tr>
-          <th class="hio-label-cell">ESO Primary Role:</th>
-          <td colspan="4">${renderHioLineValue(incident.esoPrimaryRole)}</td>
-        </tr>
-        ${involvedPeople
-          .map(
-            (person) => `
-              <tr>
-                <th class="hio-label-cell">Person involved name:</th>
-                <td colspan="2">${renderHioLineValue(person.name)}</td>
-                <th class="hio-label-cell">Company name:</th>
-                <td>${renderHioLineValue(person.company)}</td>
-              </tr>
-            `
-          )
-          .join("")}
-        <tr>
-          <th class="hio-label-cell">External Agencies Involved:</th>
-          <td colspan="4">${renderHioLineValue(incident.externalAgenciesInvolved)}</td>
-        </tr>
-        <tr>
-          <th class="hio-label-cell">Handover (to another agency):</th>
-          <td colspan="4">${renderHioLineValue(incident.handoverAgency)}</td>
-        </tr>
-        <tr>
-          <th class="hio-label-cell">Logistics Issues:</th>
-          <td colspan="4">${renderHioLineValue(incident.logisticsIssues)}</td>
-        </tr>
-        <tr>
-          <th class="hio-label-cell">Communication Issues:</th>
-          <td colspan="4">${renderHioLineValue(incident.communicationIssues)}</td>
-        </tr>
-        <tr>
-          <th class="hio-label-cell">Policy/Procedure:</th>
-          <td colspan="4">${renderHioLineValue(incident.policyProcedureIssues)}</td>
-        </tr>
-      </table>
-
-      ${renderHioPageMeta(1)}
-    </article>
-  `;
-
-  dom.hioExportPage2.innerHTML = `
-    <article class="hio-export-sheet">
-      <header class="hio-export-header">
-        <h2>Emergency &amp; Security Activation Report</h2>
-        <img class="hio-export-logo" src="logo-hancock-iron-ore.svg" alt="Hancock Iron Ore" />
-      </header>
-      <div class="hio-export-rule"></div>
-
-      <table class="hio-export-table hio-export-table-page-two">
-        <tr>
-          <th class="hio-label-cell">Mutual Aid Issues:</th>
-          <td>${renderHioLineValue(incident.mutualAidIssues)}</td>
-        </tr>
-        <tr>
-          <th class="hio-label-cell">Other issues/comments:</th>
-          <td>${renderHioLineValue(incident.otherIssuesComments)}</td>
-        </tr>
-        <tr>
-          <th colspan="2" class="hio-section-bar">Incident Photos if Available</th>
-        </tr>
-        <tr>
-          <td colspan="2">
-            <div class="hio-photo-box">
-              <div class="hio-photo-layout">
-                ${renderHioPhotoGallery(incident.incidentPhotos)}
-                <div class="hio-photo-summary">${renderHioBlockValue(buildHioPhotoBlock(incident))}</div>
-              </div>
-            </div>
-          </td>
-        </tr>
-      </table>
-
-      <table class="hio-export-table hio-export-signoff">
-        <tr>
-          <th class="hio-label-cell">Report Compiled By:</th>
-          <td>${renderHioLineValue(getCompiledByValue(incident))}</td>
-          <th class="hio-label-cell">Date:</th>
-          <td>${renderHioLineValue(formatDateOnly(getCompiledDateValue(incident)))}</td>
-        </tr>
-      </table>
-
-      ${renderHioPageMeta(2)}
-    </article>
-  `;
+  dom.hioExportPages.innerHTML = [
+    renderHioFirstPage(incident, involvedPeople, detailPages[0], 1, totalPages),
+    continuationPages,
+    renderHioPhotoPage(incident, totalPages, totalPages),
+  ].join("");
 
   dom.hioExportPages.setAttribute("aria-hidden", "false");
 }
