@@ -110,8 +110,6 @@ img {
   border: 1px solid #000000;
   border-bottom: 10px solid #000000;
   box-shadow: var(--shadow);
-  border-radius: 10px;
-  bottom-border-radius: 10px;
 }
 
 .brand-lockup {
@@ -1345,8 +1343,16 @@ textarea:focus,
   line-height: 1.28;
 }
 
-.hio-large-box {
+.hio-large-box--page-one {
   min-height: 102mm;
+  height: 102mm;
+  overflow: hidden;
+}
+
+.hio-large-box--continuation {
+  min-height: 220mm;
+  height: 220mm;
+  overflow: hidden;
 }
 
 .hio-photo-box {
