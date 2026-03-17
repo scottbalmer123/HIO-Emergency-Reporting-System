@@ -1360,11 +1360,67 @@ function truncateBlockText(value, maxLength) {
   return `${text.slice(0, Math.max(0, maxLength - 3)).trimEnd()}...`;
 }
 
+function buildHioChronologyEntries(incident) {
+  const reportedAt = incidentReportedAtDate(incident);
+  const entries = [];
+
+  const addEntry = (dateValue, label, detail = "") => {
+    const date = dateValue instanceof Date ? dateValue : parseDateValue(dateValue);
+    if (!date) {
+      return;
+    }
+
+    const parts = [singleLine(label)];
+    const normalizedDetail = singleLine(detail);
+
+    if (normalizedDetail) {
+      parts.push(normalizedDetail);
+    }
+
+    entries.push({
+      sortValue: date.valueOf(),
+      text: `${formatTimeOnly(date)} ${parts.join(": ")}`,
+    });
+  };
+
+  addEntry(reportedAt, "Initial alert", incident.initialAlert || "Control room notification received");
+  addEntry(reportedAt, "Immediate actions", incident.initialActions);
+  addEntry(combineIncidentDateAndTime(incident, incident.timeEsoSuperintendentNotified), "ESO superintendent notified");
+  addEntry(combineIncidentDateAndTime(incident, incident.timeSseAltNotified), "SSE or ALT SSE notified");
+  addEntry(combineIncidentDateAndTime(incident, incident.timeWhispirOtherNotified), "Whispir / other notified");
+  addEntry(combineIncidentDateAndTime(incident, incident.arrivalAtSiteTime), "Arrived at site");
+  addEntry(parseDateValue(incident.controlledAt), "Incident controlled");
+  addEntry(combineIncidentDateAndTime(incident, incident.departureTime), "Departed site");
+
+  incident.radioLogs.forEach((entry) => {
+    const radioDetail = [
+      singleLine(entry.unit) || "Unit",
+      singleLine(entry.movement),
+      singleLine(entry.location),
+      singleLine(entry.notes),
+    ]
+      .filter(Boolean)
+      .join(" | ");
+
+    addEntry(entry.timestamp, "Radio", radioDetail);
+  });
+
+  return entries.sort((a, b) => a.sortValue - b.sortValue).map((entry) => entry.text);
+}
+
 function buildHioDetailBlock(incident) {
-  const sections = [
-    ["Assets deployed", incident.equipmentDeployed],
-    ["Initial alert", incident.initialAlert],
-    ["Immediate actions", incident.initialActions],
+  const chronology = buildHioChronologyEntries(incident);
+  const sections = [];
+
+  if (singleLine(incident.equipmentDeployed)) {
+    sections.push(`Assets deployed: ${singleLine(incident.equipmentDeployed)}`);
+  }
+
+  if (chronology.length > 0) {
+    sections.push(["Chronology:", ...chronology].join("\n"));
+  }
+
+  [
     ["Ongoing response", incident.responseActions],
     ["Casualty summary", incident.casualtySummary],
     ["Primary hazards", incident.hazards],
@@ -1373,21 +1429,9 @@ function buildHioDetailBlock(incident) {
     ["Recovery", incident.recoveryActions],
   ]
     .filter(([, value]) => singleLine(value))
-    .map(([label, value]) => `${label}: ${singleLine(value)}`);
-
-  if (incident.radioLogs.length > 0) {
-    sections.push(
-      `Radio timeline: ${incident.radioLogs
-        .slice(0, 4)
-        .map(
-          (entry) =>
-            `${formatTimeOnly(entry.timestamp)} ${singleLine(entry.unit)} ${singleLine(entry.movement)}${
-              entry.location ? ` ${singleLine(entry.location)}` : ""
-            }`
-        )
-        .join("; ")}`
-    );
-  }
+    .forEach(([label, value]) => {
+      sections.push(`${label}: ${singleLine(value)}`);
+    });
 
   return truncateBlockText(sections.join("\n\n"), 1800) || "No incident / activation detail recorded.";
 }
@@ -1400,18 +1444,6 @@ function buildHioPhotoBlock(incident) {
     incident.incidentPhotos.length > 0
       ? `Uploaded photos: ${incident.incidentPhotos.map((photo) => photo.name).join(", ")}`
       : "Uploaded photos: None.";
-  const radioSection =
-    incident.radioLogs.length > 0
-      ? [
-          "Radio operator timeline:",
-          ...incident.radioLogs.map(
-            (entry) =>
-              `${formatTimeOnly(entry.timestamp)} | ${singleLine(entry.unit) || "Unit"} | ${singleLine(entry.movement)}${
-                entry.location ? ` | ${singleLine(entry.location)}` : ""
-              }${entry.notes ? ` | ${singleLine(entry.notes)}` : ""}`
-          ),
-        ].join("\n")
-      : "Radio operator timeline:\nNo radio movement entries recorded.";
 
   const assignedWorkers = getAssignedWorkers(incident.assignedPersonnelIds);
   const personnelSection =
@@ -1419,7 +1451,7 @@ function buildHioPhotoBlock(incident) {
       ? `Assigned workers: ${assignedWorkers.map((worker) => worker.fullName).join(", ")}`
       : "Assigned workers: None recorded.";
 
-  return truncateBlockText([photoSection, uploadedPhotosSection, "", radioSection, "", personnelSection].join("\n"), 900);
+  return truncateBlockText([photoSection, uploadedPhotosSection, "", personnelSection].join("\n"), 900);
 }
 
 function getCompiledByValue(incident) {
